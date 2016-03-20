@@ -1,0 +1,166 @@
+#The R code for the sequential early warning monitoring system
+
+library(R2WinBUGS)
+library(coda)
+library(rootSolve)
+
+covariate_data <- read.table ("covariate_data.txt", header=TRUE)
+covariate_data
+
+
+
+y <- covariate_data$y
+y
+
+y.df <- data.frame(y)
+y.df
+
+
+x1 <- covariate_data$x1
+x1
+
+x1.df <- data.frame(x1)
+x1.df
+
+
+x4 <- covariate_data$x4
+x4
+
+x4.df <- data.frame(x4)
+x4.df
+
+x6 <- covariate_data$x6
+x6
+
+x6.df <- data.frame(x6)
+x6.df
+
+sp <- s covariate_data$sp
+sp
+
+sp.df <- data.frame(sp)
+sp.df
+
+
+fa <- covariate_data$fa
+fa
+
+fa.df <- data.frame(fa)
+fa.df
+
+x7 <- distance$x7
+x7
+x7.df <- data.frame(distance)
+x7.df
+
+start <- start$start
+start
+
+start.df <- data.frame(start)
+start.df
+
+
+end1 <- start$end1
+end1
+
+end1.df <- data.frame(end1)
+end1.df
+
+
+T<-73
+
+for (j in 10:T)
+{
+
+osub <- o.df[1:j, ]
+osub
+x1sub <- x1.df[1:j, ]
+x1sub
+susub <- sp.df[1:j, ]
+susub
+fasub <- fa.df[1:j, ]
+fasub
+
+
+data<-list("j", "osub", "x1sub", "spsub", "susub", "x7", "start", "end1")
+data
+
+
+inits <- function() {list (alphab=1, alphac=1, b1=0,b2=0, b3=0,c1=0, c2=0)}
+parameters <- c("alphab","alphac","b1","b2","b3","c1","c2"))
+model.sim<- bugs (data, inits, parameters, codaPkg=FALSE, "model.bug", n.chains=1, n.iter=6000, n.burnin=4000, n.thin=1,bugs.directory="C:/Users/user/Desktop/temp/winbugs14/WinBUGS14/", debug=FALSE) 
+
+
+b1 = model.sim$sims.array[,1,1]
+b2 = model.sim$sims.array[,1,2]
+b3 = model.sim$sims.array[,1,3]
+alphab = model.sim$sims.array[,1,4]
+
+
+lambda<-exp(median(b1) + median(b2)*su.df[j:j, ] + median(b3)*fa.df[j:j, ] + median(alphab)*x7.df[j:j, ]  +  median(alphab)*exp(-median(alphab)*x7.df[j:j, ]))
+print(lambda)
+
+f <- function (q, lambda1) exp(q*lambda1) - q*exp(lambda1)
+root <- uniroot.all(f, c(0, 1), tol = 0.0000001, lambda1=lambda)
+print(root)
+
+}
+
+
+#The WinBUGS code for the best selected model sequentially fitted through R
+
+model
+{
+
+osub[1] ~ dpois(lambda[1])
+u[1] ~ dbern(p[1])
+lambda[1] <- (1 - u[1]) * mu[1]
+log(mu[1]) <-mu1[1]
+mu1[1] ~ dnorm(M[1],U) 
+C[1]<-  b1 +  b2*susub[1]  +b3*fasub[1] + alphab*exp(-alphab*x7[1]) 
+M[1]<-C[1] + (log(mu[1])- C[1])*exp(-phi)
+
+logit(p[1]) <-c1 +c2*x1sub[1] + alphac*exp(-alphac*x7[1])
+
+for(k in 2:19519) {
+			
+D1[k]<-alphab*exp(-alphab*x7[k])
+D2[k]<-alphac*exp(-alphac*x7[k])
+		     }
+								
+for(i in 2:j){
+
+V1[i]<-mean(D1[start[i]:end1[i]])
+V2[i]<-mean(D2[start[i]:end1[i]])
+
+osub[i] ~ dpois(lambda[i])
+u[i] ~ dbern(p[i])
+lambda[i] <- (1-u[i]) * (mu[i]+mu[i-1])*0.5
+log(mu[i]) <-mu1[i]
+mu1[i] ~ dnorm(M[i],U) 
+C[i]<- b1 +  b2*susub[i]  +b3*fasub[i] + V1[i]  
+M[i]<-C[i] + (log(mu[i-1])- C[i])*exp(-phi)
+
+logit(p[i]) <-c1 +c2*x1sub[i]  + V2[i]  
+}
+
+U<-(2*phi)/(1-exp(-2*phi))	
+
+
+alphab~dnorm( 0, 0.001)I(0, )
+alphac~dnorm( 0, 0.001)I(0, )
+
+b1 ~ dnorm(0 , prec)
+b2 ~ dnorm(0 , prec)
+b3 ~ dnorm(0 , prec)
+prec <- pow(tau,-2)
+tau ~ dunif(0,0.1)
+
+c1 ~ dnorm(0 , prec1)
+c2 ~ dnorm(0 , prec1)
+prec1 <- pow(tau1,-2)
+tau1 ~ dunif(0,0.1)
+
+phi ~ dnorm( 0, 0.1)I(0, )
+
+}
